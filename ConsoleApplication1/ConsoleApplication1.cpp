@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
 
 				if (sockEvent.lNetworkEvents & FD_ACCEPT) {
 					if (sockEvent.iErrorCode[FD_ACCEPT_BIT] != 0) {
-						printf("Error!");
+						printf("FD_ACCEPT failed with error %d\n", sockEvent.iErrorCode[FD_ACCEPT_BIT]);
 						break;
 					}
 
@@ -101,11 +101,10 @@ int main(int argc, char** argv) {
 					WSAEventSelect(acceptSock, newEvent, FD_READ | FD_WRITE | FD_CLOSE);
 					for (int i = 0; i <= nEvents; i++)
 					{
-						if (clients[i].is_active == 0) {
+ 						if (clients[i].is_active == 0) {
 							events[i] = newEvent;
 							clients[i].client_fd = acceptSock;
 							clients[i].is_active = 1;
-							clients[i].ok_to_read = 1;
 							nEvents++;
 							printf("socket %d connected", clients[i].client_fd);
 							break;
@@ -116,28 +115,21 @@ int main(int argc, char** argv) {
 				if (sockEvent.lNetworkEvents & FD_READ) {
 					//read socket
 					if (sockEvent.iErrorCode[FD_READ_BIT] != 0) {
-						printf("Error read on socket %d\n", clients[i].client_fd);
+						printf("FD_READ failed with error %d\n", sockEvent.iErrorCode[FD_READ_BIT]);
 						continue;
 					}
-					if (clients[i].ok_to_read == 1) {
-						if (receive_data(clients[i].client_fd, clients[i].client_buffer, BUFFSIZE, 0) < 0)
-							break;
-						process_data(&clients[i]);
-						clients[i].ok_to_read = 0;
-						clients[i].ok_to_write = 1;
-					}
-				}
 
+					
+					if (receive_data(clients[i].client_fd, clients[i].client_buffer, BUFFSIZE, 0) < 0)
+						break;
+					process_data(&clients[i]);
+					if(send_data(clients[i].client_fd, clients[i].client_buffer, BUFFSIZE, 0) < 0)
+						break;
+				}
 				if (sockEvent.lNetworkEvents & FD_WRITE) {
-					//write to socket
-					if (sockEvent.iErrorCode[FD_READ_BIT] != 0) {
-						printf("Error write on socket %d\n", clients[i].client_fd);
+					if (sockEvent.iErrorCode[FD_WRITE_BIT] != 0) {
+						printf("FD_WRITE failed with error %d\n", sockEvent.iErrorCode[FD_WRITE_BIT]);
 						continue;
-					}
-					if (clients[i].ok_to_write == 1) {
-						send_data(clients[i].client_fd, clients[i].client_buffer, BUFFSIZE, 0);
-						clients[i].ok_to_write = 0;
-						clients[i].ok_to_read = 1;
 					}
 				}
 
@@ -145,14 +137,14 @@ int main(int argc, char** argv) {
 					//socket closed
 					if (sockEvent.iErrorCode[FD_CLOSE_BIT] != 0)
 					{
-						printf("Error close socket %d", clients[i].client_fd);
+						printf("FD_CLOSE failed with error %d\n", sockEvent.iErrorCode[FD_CLOSE_BIT]);						
 						break;
 					}
 
 					closesocket(clients[i].client_fd);
 					// Remove socket and associated event from
 					memset(&clients[i], 0, sizeof(struct client_info_struct));
-					events[i] = 0;
+					nEvents--;
 				}
 
 				//reset

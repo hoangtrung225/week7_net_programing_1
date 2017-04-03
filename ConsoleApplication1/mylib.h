@@ -9,8 +9,6 @@ struct client_info_struct {
 	SOCKET client_fd;
 	char client_buffer[BUFFSIZE];
 	int is_active;
-	int ok_to_read;
-	int ok_to_write;
 };
 
 //Server respond format [3char: respond code][string: message]
