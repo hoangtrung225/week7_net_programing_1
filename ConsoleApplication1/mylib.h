@@ -7,8 +7,9 @@ struct client_info_struct {
 	int state;
 	int attemt_count;
 	SOCKET client_fd;
-	char client_buffer[BUFFSIZE];
+	char* client_buffer;
 	int is_active;
+	int ok_to_write;
 };
 
 //Server respond format [3char: respond code][string: message]
